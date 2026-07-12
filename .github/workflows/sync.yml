@@ -41,12 +41,14 @@ jobs:
         run: |
           python3 -m pip install --quiet --upgrade pip
           python3 -m pip install --quiet jinja2
-          # pat ships in the etopro plugin-marketplace; vendor its scripts inline.
-          mkdir -p ~/.local/bin ~/.local/pat_lib
-          curl -fsSL https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat/scripts/pat.sh        -o ~/.local/bin/pat
-          curl -fsSL https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat/scripts/pat_lib/jwt.sh -o ~/.local/pat_lib/jwt.sh
-          curl -fsSL https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat/scripts/pat_lib/bw.sh   -o ~/.local/pat_lib/bw.sh
-          sed -i 's#SCRIPT_DIR/pat_lib/#~/.local/pat_lib/#' ~/.local/bin/pat 2>/dev/null || true
+          # pat ships in etopro/plugin-marketplace. Vendor pat.sh + pat_lib/
+          # side-by-side so pat.sh's own SCRIPT_DIR/pat_lib/ resolution works
+          # unchanged (SCRIPT_DIR = dir of pat.sh).
+          mkdir -p ~/.local/bin/pat_lib
+          base="https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat"
+          curl -fsSL "$base/scripts/pat.sh"         -o ~/.local/bin/pat
+          curl -fsSL "$base/scripts/pat_lib/jwt.sh"  -o ~/.local/bin/pat_lib/jwt.sh
+          curl -fsSL "$base/scripts/pat_lib/bw.sh"   -o ~/.local/bin/pat_lib/bw.sh
           chmod +x ~/.local/bin/pat
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
