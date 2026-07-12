@@ -1,0 +1,5 @@
+# generated outputs (never commit — they live in the output repos)
+out/
+__pycache__/
+*.pyc
+.DS_Store

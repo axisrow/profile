@@ -1,0 +1,38 @@
+### Hi, I'm {{ handle }} 👋
+
+{% if available_for_contributions %}🟢 **Available for open-source contributions & collaboration**
+
+{% endif %}{{ tagline }}
+
+🌐 Portfolio: **{{ portfolio_url }}**
+
+---
+
+### 🔨 Proof of Work
+
+**Open-Source Contributions** — merged upstream
+
+| Project | Contribution | PR |
+|---|---|---|
+{% for c in contributions %}| [{{ c.project }}]({{ c.url }}) | {{ c.desc }} | {% if c.pr %}[{{ c.pr }}]({{ c.pr_url }}){% else %}—{% endif %} |
+{% endfor %}
+
+---
+
+{% for group, repos in projects.items() %}**{{ group }}**
+
+| Project | Description | ★ |
+|---|---|---|
+{% for name in repos %}| [{{ name }}](https://github.com/{{ handle }}/{{ name }}) | {{ descriptions[name] | no_period }} | {{ stars[name] if stars[name] else "—" }} |
+{% endfor %}
+{% endfor %}
+---
+
+### 🧰 Tech Stack
+
+{% for t in tech_stack %}{% if not loop.first %} · {% endif %}`{{ t }}`{% endfor %}
+
+### 🌐 Socials
+
+- GitHub: [@{{ handle }}](https://github.com/{{ handle }})
+- Portfolio: [{{ portfolio_url | replace("https://", "") }}]({{ portfolio_url }})

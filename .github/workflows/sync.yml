@@ -1,0 +1,114 @@
+name: sync-profile
+
+# Single source of truth → generates README (axisrow/axisrow) + Projects fragment
+# (axisrow.github.io) and cross-pushes them, using a short-lived GitHub App
+# installation token minted by `pat` from the APP_PRIVATE_KEY secret.
+#
+# Stars are pulled live from the GitHub API on every run.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'projects.json'
+      - 'sync/**'
+      - '.github/workflows/sync.yml'
+  schedule:
+    # Weekly, Mondays ~03:17 UTC (off-round minute to avoid the API rush).
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-profile
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout profile (source of truth)
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: "Install pat (from marketplace) + jinja2"
+        run: |
+          python3 -m pip install --quiet --upgrade pip
+          python3 -m pip install --quiet jinja2
+          # pat ships in the etopro plugin-marketplace; vendor its scripts inline.
+          mkdir -p ~/.local/bin ~/.local/pat_lib
+          curl -fsSL https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat/scripts/pat.sh        -o ~/.local/bin/pat
+          curl -fsSL https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat/scripts/pat_lib/jwt.sh -o ~/.local/pat_lib/jwt.sh
+          curl -fsSL https://raw.githubusercontent.com/etopro/plugin-marketplace/main/plugins/pat/scripts/pat_lib/bw.sh   -o ~/.local/pat_lib/bw.sh
+          sed -i 's#SCRIPT_DIR/pat_lib/#~/.local/pat_lib/#' ~/.local/bin/pat 2>/dev/null || true
+          chmod +x ~/.local/bin/pat
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: "Configure pat (CI mode: PEM from secret, no Bitwarden)"
+        run: |
+          mkdir -p ~/.config/pat
+          printf 'PAT_APP_ID=%s\n' "${{ secrets.PAT_APP_ID }}" > ~/.config/pat/config
+          chmod 600 ~/.config/pat/config
+
+      - name: Mint installation token
+        id: token
+        env:
+          APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+        run: |
+          echo "token=$(pat token)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate outputs (live stars from API)
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          python3 sync/generate.py
+          echo "--- generated README ---"
+          head -40 out/axisrow/README.md
+
+      - name: Sync README → axisrow/axisrow
+        env:
+          TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          tmp="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/axisrow/axisrow.git" "$tmp/repo"
+          cp out/axisrow/README.md "$tmp/repo/README.md"
+          msg="bot: sync profile README (stars $(date -u +%Y-%m-%d))"
+          if git -C "$tmp/repo" diff --quiet; then
+            echo "README unchanged."
+          else
+            git -C "$tmp/repo" -c user.email="4278593+axisrow-ci[bot]@users.noreply.github.com" -c user.name="axisrow-ci[bot]" commit -am "$msg"
+            git -C "$tmp/repo" push origin HEAD:main
+          fi
+
+      - name: Sync Projects fragment → axisrow.github.io
+        env:
+          TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          tmp="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/axisrow/axisrow.github.io.git" "$tmp/repo"
+          python3 - "$tmp/repo/index.html" <<'PY'
+          import re, sys
+          target, path = sys.argv[1], "out/site/projects.html"
+          fragment = open(path).read().rstrip() + "\n"
+          html = open(target).read()
+          new = re.sub(
+              r'(?ms)(    <section id="projects" class="section">.*?</section>)',
+              lambda m: fragment.rstrip(),
+              html, count=1)
+          if new == html:
+              print("no change"); sys.exit(0)
+          open(target, "w").write(new)
+          PY
+          msg="bot: sync profile Projects section (stars $(date -u +%Y-%m-%d))"
+          if git -C "$tmp/repo" diff --quiet; then
+            echo "site unchanged."
+          else
+            git -C "$tmp/repo" -c user.email="4278593+axisrow-ci[bot]@users.noreply.github.com" -c user.name="axisrow-ci[bot]" commit -am "$msg"
+            git -C "$tmp/repo" push origin HEAD:main
+          fi

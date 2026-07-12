@@ -1,0 +1,13 @@
+    <section id="projects" class="section">
+      <p class="eyebrow">Selected Work</p>
+      <h2 class="section-title">Projects</h2>
+      <p class="section-note">Original repositories with the most stars — see all at <a href="https://github.com/{{ handle }}?tab=repositories" target="_blank" rel="noopener">github.com/{{ handle }}</a>.</p>
+{% for group, repos in projects.items() %}
+      <h3 class="group-title">{{ group }}</h3>
+      <div class="cards">
+{% for name in repos %}        <a class="card reveal" href="https://github.com/{{ handle }}/{{ name }}" target="_blank" rel="noopener">
+          <div class="card-head"><span class="card-name">{{ name }}</span>{% if stars[name] %}<span class="card-star">★ {{ stars[name] }}</span>{% endif %}</div>
+          <p class="card-desc">{{ descriptions[name] }}</p>
+        </a>
+{% endfor %}      </div>
+{% endfor %}    </section>

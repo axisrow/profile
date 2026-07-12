@@ -1,0 +1,82 @@
+{
+  "handle": "axisrow",
+  "tagline": "Python engineer — AI agent tooling, automation, and data/finance systems.",
+  "available_for_contributions": true,
+  "portfolio_url": "https://axisrow.github.io",
+  "email": "axisrow@gmail.com",
+  "telegram": "https://t.me/axisrow",
+
+  "stats": {
+    "stars_earned": 67,
+    "merged_upstream_prs": 37,
+    "starred_projects": 7,
+    "_note": "stars_earned/merged_upstream_prs are verified snapshots (gh, 2026-07-12); per-repo stars are pulled live by sync/generate.py"
+  },
+
+  "contributions": [
+    {
+      "project": "ranaroussi/yfinance",
+      "url": "https://github.com/ranaroussi/yfinance",
+      "desc": "Optional retry mechanism for transient network errors",
+      "pr": "#2627",
+      "pr_url": "https://github.com/ranaroussi/yfinance/pull/2627"
+    },
+    {
+      "project": "IBM/mcp-cli",
+      "url": "https://github.com/IBM/mcp-cli",
+      "desc": "`CmdCommand` for Unix-friendly automation + serialization fix",
+      "pr": "#227",
+      "pr_url": "https://github.com/IBM/mcp-cli/pull/227"
+    },
+    {
+      "project": "etopro/ai-resto",
+      "url": "https://github.com/etopro/ai-resto",
+      "desc": "23 merged PRs across v0.2–v1.0 (auth, Redis caching, DB optimization, E2E/Playwright, PWA push, security)",
+      "pr": null,
+      "pr_url": "https://github.com/etopro/ai-resto/pulls?q=is%3Apr+author%3Aaxisrow+is%3Amerged"
+    },
+    {
+      "project": "AgentWrapper/agent-orchestrator",
+      "url": "https://github.com/AgentWrapper/agent-orchestrator",
+      "desc": "Multiline prompt submit + safer permission-dialog handling",
+      "pr": "#2357",
+      "pr_url": "https://github.com/AgentWrapper/agent-orchestrator/pull/2357"
+    }
+  ],
+
+  "tech_stack": [
+    "Python",
+    "asyncio / aiogram",
+    "LangChain",
+    "MCP",
+    "pandas / statsmodels / sktime / LightGBM",
+    "Docker",
+    "Git"
+  ],
+
+  "projects": {
+    "Telegram & Yandex": [
+      "tg_content_factory",
+      "yandex-direct-mcp-plugin",
+      "direct-cli"
+    ],
+    "AI / Agent Tooling": [
+      "clihost",
+      "claude-code-cycle-review-skill",
+      "claude_code_gmail_plugin"
+    ],
+    "Data / ML": [
+      "llm_benchmark"
+    ]
+  },
+
+  "descriptions": {
+    "tg_content_factory": "Content-factory pipeline for Telegram — flagship project.",
+    "yandex-direct-mcp-plugin": "Claude Code plugin for Yandex.Direct — MCP server + skills + OAuth.",
+    "direct-cli": "CLI for Yandex.Direct.",
+    "clihost": "Self-hosting / proxy CLI, security-hardened.",
+    "claude-code-cycle-review-skill": "Automated PR review cycle for Claude Code.",
+    "claude_code_gmail_plugin": "Gmail plugin for Claude Code.",
+    "llm_benchmark": "LLM benchmark harness."
+  }
+}
