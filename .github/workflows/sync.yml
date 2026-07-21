@@ -166,7 +166,7 @@ jobs:
               open(script_path, "w").write(script)
           PY
           cp data/stars-history.json "$tmp/repo/stars-history.json"
-          git -C "$tmp/repo" add stars-history.json
+          git -C "$tmp/repo" add index.html main.js stars-history.json
           msg="bot: sync profile Projects section (stars $(date -u +%Y-%m-%d))"
           if git -C "$tmp/repo" diff --quiet && git -C "$tmp/repo" diff --cached --quiet; then
             echo "site unchanged."
