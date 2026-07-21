@@ -82,7 +82,16 @@ def owned_original_repositories(handle: str) -> list[dict]:
 
 
 def star_dates(repo: str, start: date) -> Counter[date]:
-    events = paged(f"repos/{repo}/stargazers", "application/vnd.github.star+json")
+    try:
+        events = paged(f"repos/{repo}/stargazers", "application/vnd.github.star+json")
+    except urllib.error.HTTPError as error:
+        # Installation tokens can list a repository but still lack permission to
+        # enumerate its stargazers. Existing history remains authoritative; a
+        # skipped private repo must not make the daily site sync fail.
+        if error.code not in {403, 404}:
+            raise
+        print(f"  WARNING: {repo}: cannot enumerate stargazers ({error.code})", file=sys.stderr)
+        return Counter()
     dates: Counter[date] = Counter()
     for event in events:
         starred_at = event.get("starred_at")
