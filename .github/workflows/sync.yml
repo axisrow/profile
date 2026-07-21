@@ -146,14 +146,15 @@ jobs:
                   r'<a href="#stars" data-nav="stars">Stars</a>\n        \1', new, count=1)
               if count != 1:
                   raise SystemExit("could not add Stars navigation")
+          new, removed = re.subn(
+              r'(?ms)\n?    <section id="stars" class="section">.*?</section>',
+              '', new, count=1)
+          if removed > 1:
+              raise SystemExit("found multiple Stars sections")
           new, count = re.subn(
-              r'(?ms)(    <section id="stars" class="section">.*?</section>)',
-              stars_fragment, new, count=1)
-          if count == 0:
-              new, count = re.subn(
-                  r'    <!-- PROJECTS -->', stars_fragment + r'\n\n    <!-- PROJECTS -->', new, count=1)
+              r'    <!-- ABOUT -->', stars_fragment + r'\n\n    <!-- ABOUT -->', new, count=1)
           if count != 1:
-              raise SystemExit("could not insert Stars section")
+              raise SystemExit("could not insert Stars section after hero")
           open(target, "w").write(new)
           script = open(script_path).read()
           if '"stars"' not in script:
