@@ -8,9 +8,11 @@
 
   "stats": {
     "stars_earned": 104,
+    "fork_stars": 5,
+    "star_history_start": "2026-03-01",
     "merged_upstream_prs": 37,
     "starred_projects": 7,
-    "_note": "stars_earned/merged_upstream_prs are verified snapshots (GitHub, 2026-07-21); per-repo stars are pulled live by sync/generate.py"
+    "_note": "stars_earned includes 5 stars on forks; the graph uses a 2026-03-01 opening balance plus GitHub star events and ends at 99 original-repository stars"
   },
 
   "contributions": [

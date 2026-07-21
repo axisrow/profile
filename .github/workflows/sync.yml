@@ -14,8 +14,8 @@ on:
       - 'sync/**'
       - '.github/workflows/sync.yml'
   schedule:
-    # Weekly, Mondays ~03:17 UTC (off-round minute to avoid the API rush).
-    - cron: '17 3 * * 1'
+    # Daily ~03:17 UTC (off-round minute to avoid the API rush).
+    - cron: '17 3 * * *'
   workflow_dispatch:
 
 permissions:
@@ -65,6 +65,22 @@ jobs:
         run: |
           echo "token=$(pat token)" >> "$GITHUB_OUTPUT"
 
+      - name: Restore the previous star-history snapshot
+        env:
+          TOKEN: ${{ steps.token.outputs.token }}
+        run: |
+          tmp="$(mktemp -d)"
+          git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/axisrow/axisrow.github.io.git" "$tmp/repo"
+          if [ -f "$tmp/repo/stars-history.json" ]; then
+            mkdir -p data
+            cp "$tmp/repo/stars-history.json" data/stars-history.json
+          fi
+
+      - name: Restore and update daily star history
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
+        run: python3 sync/stars_history.py
+
       - name: Generate outputs (live stars from API)
         env:
           GH_TOKEN: ${{ steps.token.outputs.token }}
@@ -94,10 +110,12 @@ jobs:
         run: |
           tmp="$(mktemp -d)"
           git clone --depth 1 "https://x-access-token:${TOKEN}@github.com/axisrow/axisrow.github.io.git" "$tmp/repo"
-          python3 - "$tmp/repo/index.html" <<'PY'
+          python3 - "$tmp/repo/index.html" "$tmp/repo/main.js" <<'PY'
           import json, re, sys
-          target, path = sys.argv[1], "out/site/projects.html"
+          target, script_path = sys.argv[1:]
+          path = "out/site/projects.html"
           fragment = open(path).read().rstrip() + "\n"
+          stars_fragment = open("out/site/stars.html").read().rstrip()
           stats = json.load(open("out/site/stats.json"))
           html = open(target).read()
           new = re.sub(
@@ -122,10 +140,31 @@ jobs:
               new, count = re.subn(pattern, replacement, new, count=1)
               if count != 1:
                   raise SystemExit(f"expected one match for: {pattern}")
-          if new == html:
-              print("no change"); sys.exit(0)
+          if 'href="#stars"' not in new:
+              new, count = re.subn(
+                  r'(<a href="#projects" data-nav="projects">Projects</a>)',
+                  r'<a href="#stars" data-nav="stars">Stars</a>\n        \1', new, count=1)
+              if count != 1:
+                  raise SystemExit("could not add Stars navigation")
+          new, count = re.subn(
+              r'(?ms)(    <section id="stars" class="section">.*?</section>)',
+              stars_fragment, new, count=1)
+          if count == 0:
+              new, count = re.subn(
+                  r'    <!-- PROJECTS -->', stars_fragment + r'\n\n    <!-- PROJECTS -->', new, count=1)
+          if count != 1:
+              raise SystemExit("could not insert Stars section")
           open(target, "w").write(new)
+          script = open(script_path).read()
+          if '"stars"' not in script:
+              script, count = re.subn(
+                  r'\["about", "experience", "opensource", "projects", "contact"\]',
+                  '["about", "experience", "opensource", "stars", "projects", "contact"]', script, count=1)
+              if count != 1:
+                  raise SystemExit("could not register Stars navigation")
+              open(script_path, "w").write(script)
           PY
+          cp data/stars-history.json "$tmp/repo/stars-history.json"
           msg="bot: sync profile Projects section (stars $(date -u +%Y-%m-%d))"
           if git -C "$tmp/repo" diff --quiet; then
             echo "site unchanged."

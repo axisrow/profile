@@ -14,7 +14,7 @@ projects.json  ──▶ sync/generate.py  ──▶  out/axisrow/README.md     
 
 - Edit `projects.json` (descriptions, grouping, contributions, stats) — commit to `main`.
 - A GitHub Actions workflow (`.github/workflows/sync.yml`) runs on every push to
-  `projects.json`/`sync/**`, on a weekly cron, and on manual dispatch.
+  `projects.json`/`sync/**`, daily, and on manual dispatch.
 - It mints a short-lived GitHub App installation token via [`pat`](https://github.com/etopro/plugin-marketplace/tree/main/plugins/pat)
   (CI mode — PEM from the `APP_PRIVATE_KEY` secret, **no Bitwarden in CI**),
   pulls live star counts, renders both outputs, and cross-pushes them to the two
@@ -43,4 +43,7 @@ diff out/axisrow/README.md <(gh api repos/axisrow/axisrow/contents/README.md -q 
 `projects.json` tracks a fixed set of repos (the starred ones). New repos are not
 added automatically — only the ones listed. Per-repo star counts are pulled live
 from the GitHub API on each run; the aggregate stats (`stars_earned`,
-`merged_upstream_prs`) are verified snapshots that you refresh manually.
+`merged_upstream_prs`) are verified snapshots. The site also keeps a daily star
+history from 2026-03-01: it uses an opening balance plus dated GitHub star
+events so the restored series ends at 99 original-repository stars (104 total
+minus 5 fork stars).

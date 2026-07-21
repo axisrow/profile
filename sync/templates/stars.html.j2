@@ -1,0 +1,29 @@
+    <section id="stars" class="section">
+      <p class="eyebrow">Momentum</p>
+      <h2 class="section-title">Stars over time</h2>
+      <p class="section-note">Daily cumulative stars on original GitHub repositories. The line starts with an opening balance on {{ star_history.start_date }}; forks are excluded.</p>
+      <div class="stars-chart reveal">
+        <svg viewBox="0 0 960 340" role="img" aria-labelledby="stars-chart-title stars-chart-desc">
+          <title id="stars-chart-title">Cumulative GitHub stars since {{ star_history.start_date }}</title>
+          <desc id="stars-chart-desc">The chart ends at {{ star_history.chart.latest_total }} stars on {{ star_history.chart.latest_date }}.</desc>
+{% for tick in star_history.chart.ticks %}          <line class="stars-grid" x1="54" x2="936" y1="{{ tick.y }}" y2="{{ tick.y }}" />
+          <text class="stars-y-label" x="44" y="{{ tick.y }}">{{ tick.value }}</text>
+{% endfor %}          <polyline class="stars-line" points="{{ star_history.chart.points }}" />
+          <circle class="stars-end" cx="{{ star_history.chart.end_x }}" cy="{{ star_history.chart.end_y }}" r="5" />
+{% for month in star_history.chart.months %}          <text class="stars-x-label" x="{{ month.x }}" y="322">{{ month.label }}</text>
+{% endfor %}        </svg>
+        <p class="stars-latest"><strong>{{ star_history.chart.latest_total }}★</strong> on {{ star_history.chart.latest_date }}</p>
+      </div>
+      <style>
+        .stars-chart { margin-top: 38px; width: 100%; }
+        .stars-chart svg { width: 100%; height: auto; overflow: visible; }
+        .stars-grid { stroke: var(--border); stroke-width: 1; }
+        .stars-line { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+        .stars-end { fill: var(--accent); stroke: var(--bg); stroke-width: 3; }
+        .stars-y-label, .stars-x-label { fill: var(--fg-soft); font: 12px "IBM Plex Mono", monospace; }
+        .stars-y-label { text-anchor: end; dominant-baseline: middle; }
+        .stars-x-label { text-anchor: middle; }
+        .stars-latest { margin-top: 12px; color: var(--fg-soft); font-family: "IBM Plex Mono", monospace; font-size: 13px; }
+        .stars-latest strong { color: var(--accent); }
+      </style>
+    </section>

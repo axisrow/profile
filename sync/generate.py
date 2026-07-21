@@ -20,6 +20,7 @@ import json
 import os
 import sys
 import urllib.request
+from datetime import date
 from pathlib import Path
 
 try:
@@ -30,6 +31,39 @@ except ImportError:
 ROOT = Path(__file__).resolve().parent
 TEMPLATES = ROOT / "templates"
 OUT = Path("out")
+
+
+def chart_data(history: dict) -> dict:
+    """Prepare a compact, responsive SVG line-chart from daily cumulative data."""
+    entries = history["entries"]
+    width, height = 960, 340
+    left, right, top, bottom = 54, 24, 22, 42
+    plot_width, plot_height = width - left - right, height - top - bottom
+    maximum = max(entry["total"] for entry in entries)
+    ceiling = max(10, ((maximum + 9) // 10) * 10)
+
+    def x(index: int) -> float:
+        return left + plot_width * index / max(1, len(entries) - 1)
+
+    def y(value: int) -> float:
+        return top + plot_height * (1 - value / ceiling)
+
+    points = " ".join(f"{x(i):.1f},{y(entry['total']):.1f}" for i, entry in enumerate(entries))
+    ticks = [0, ceiling // 2, ceiling]
+    month_labels = []
+    for index, entry in enumerate(entries):
+        current = date.fromisoformat(entry["date"])
+        if current.day == 1 or index == 0:
+            month_labels.append({"x": f"{x(index):.1f}", "label": current.strftime("%b")})
+    return {
+        "points": points,
+        "end_x": f"{x(len(entries) - 1):.1f}",
+        "end_y": f"{y(entries[-1]['total']):.1f}",
+        "latest_total": entries[-1]["total"],
+        "latest_date": entries[-1]["date"],
+        "ticks": [{"value": tick, "y": f"{y(tick):.1f}"} for tick in ticks],
+        "months": month_labels,
+    }
 
 
 def get_stars(handle: str, repos: list[str]) -> dict[str, int]:
@@ -64,6 +98,14 @@ def main() -> int:
     print(f"Fetching live star counts for {len(all_repos)} repos…", file=sys.stderr)
     stars = get_stars(handle, all_repos)
     cfg["stars"] = stars  # consumed by templates
+    history_path = ROOT.parent / "data" / "stars-history.json"
+    if history_path.exists():
+        history = json.loads(history_path.read_text())
+        cfg["star_history"] = {**history, "chart": chart_data(history)}
+        cfg["stats"] = dict(cfg["stats"])
+        cfg["stats"]["stars_earned"] = (
+            history["entries"][-1]["total"] + int(cfg["stats"]["fork_stars"])
+        )
 
     # README — plain text/markdown, no autoescaping. Canonical README style has
     # no trailing periods in descriptions; the site uses them. Strip in-template.
@@ -96,6 +138,12 @@ def main() -> int:
     out_html.parent.mkdir(parents=True, exist_ok=True)
     out_html.write_text(html)
     print(f"wrote {out_html} ({len(html)} bytes)", file=sys.stderr)
+
+    if "star_history" in cfg:
+        stars_html = html_env.get_template("stars.html.j2").render(**cfg)
+        out_stars = OUT / "site" / "stars.html"
+        out_stars.write_text(stars_html)
+        print(f"wrote {out_stars} ({len(stars_html)} bytes)", file=sys.stderr)
 
     # The rest of the site is maintained in axisrow.github.io, but these
     # profile-wide snapshot stats appear in its hero, metadata and timeline.
