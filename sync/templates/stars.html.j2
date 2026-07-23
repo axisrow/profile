@@ -14,7 +14,8 @@
           <text class="stars-y-label" x="44" y="{{ tick.y }}">{{ tick.value }}</text>
 {% endfor %}          <polyline class="stars-line" points="{{ star_history.chart.points }}" />
           <circle class="stars-end" cx="{{ star_history.chart.end_x }}" cy="{{ star_history.chart.end_y }}" r="5" />
-{% for month in star_history.chart.months %}          <text class="stars-x-label" x="{{ month.x }}" y="{{ star_history.chart.height - star_history.chart.bottom + 24 }}">{{ month.label }}</text>
+{% for month in star_history.chart.months %}          {# x-label baseline sits 24px below the plot's bottom margin so month names clear the axis. #}
+          <text class="stars-x-label" x="{{ month.x }}" y="{{ star_history.chart.height - star_history.chart.bottom + 24 }}">{{ month.label }}</text>
 {% endfor %}        </svg>
         </div>
       </div>
