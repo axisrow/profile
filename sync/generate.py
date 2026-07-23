@@ -90,67 +90,71 @@ def get_stars(handle: str, repos: list[str]) -> dict[str, int]:
     return stars
 
 
+def make_env(templates_dir: Path, *, autoescape: bool) -> Environment:
+    """Build a Jinja2 Environment sharing the project's common loader/options."""
+    return Environment(
+        loader=FileSystemLoader(str(templates_dir)),
+        keep_trailing_newline=True,
+        trim_blocks=True,
+        lstrip_blocks=True,
+        autoescape=autoescape,
+    )
+
+
+def write_output(path: Path, content: str) -> Path:
+    """Create parent dirs, write `content` to `path`, and log the byte count."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content)
+    print(f"wrote {path} ({len(content)} bytes)", file=sys.stderr)
+    return path
+
+
+def load_history(cfg: dict) -> dict | None:
+    """Load stars-history.json, attach chart data, and recompute stars_earned."""
+    history_path = ROOT.parent / "data" / "stars-history.json"
+    if not history_path.exists():
+        return None
+    history = json.loads(history_path.read_text())
+    cfg["stats"] = dict(cfg["stats"])
+    cfg["stats"]["stars_earned"] = (
+        history["entries"][-1]["total"] + int(cfg["stats"]["fork_stars"])
+    )
+    return {**history, "chart": chart_data(history)}
+
+
 def main() -> int:
     cfg = json.loads((ROOT.parent / "projects.json").read_text())
     handle = os.environ.get("HANDLE") or str(cfg["handle"])
 
     all_repos = [r for group in cfg["projects"].values() for r in group]
     print(f"Fetching live star counts for {len(all_repos)} repos…", file=sys.stderr)
-    stars = get_stars(handle, all_repos)
-    cfg["stars"] = stars  # consumed by templates
-    history_path = ROOT.parent / "data" / "stars-history.json"
-    if history_path.exists():
-        history = json.loads(history_path.read_text())
-        cfg["star_history"] = {**history, "chart": chart_data(history)}
-        cfg["stats"] = dict(cfg["stats"])
-        cfg["stats"]["stars_earned"] = (
-            history["entries"][-1]["total"] + int(cfg["stats"]["fork_stars"])
-        )
+    cfg["stars"] = get_stars(handle, all_repos)  # consumed by templates
+
+    history = load_history(cfg)
+    if history is not None:
+        cfg["star_history"] = history
 
     # README — plain text/markdown, no autoescaping. Canonical README style has
     # no trailing periods in descriptions; the site uses them. Strip in-template.
-    def _strip_trailing_period(s: str) -> str:
-        return s[:-1] if s.endswith(".") else s
-
-    md_env = Environment(
-        loader=FileSystemLoader(str(TEMPLATES)),
-        keep_trailing_newline=True,
-        trim_blocks=True,
-        lstrip_blocks=True,
-    )
-    md_env.filters["no_period"] = _strip_trailing_period
+    md_env = make_env(TEMPLATES, autoescape=False)
+    md_env.filters["no_period"] = lambda s: s[:-1] if s.endswith(".") else s
     readme = md_env.get_template("README.md.j2").render(**cfg)
-    out_readme = OUT / "axisrow" / "README.md"
-    out_readme.parent.mkdir(parents=True, exist_ok=True)
-    out_readme.write_text(readme)
-    print(f"wrote {out_readme} ({len(readme)} bytes)", file=sys.stderr)
+    write_output(OUT / "axisrow" / "README.md", readme)
 
     # HTML fragment — autoescape on (& → &amp;) so group names render safely.
-    html_env = Environment(
-        loader=FileSystemLoader(str(TEMPLATES)),
-        keep_trailing_newline=True,
-        trim_blocks=True,
-        lstrip_blocks=True,
-        autoescape=True,
-    )
+    html_env = make_env(TEMPLATES, autoescape=True)
     html = html_env.get_template("projects.html.j2").render(**cfg)
-    out_html = OUT / "site" / "projects.html"
-    out_html.parent.mkdir(parents=True, exist_ok=True)
-    out_html.write_text(html)
-    print(f"wrote {out_html} ({len(html)} bytes)", file=sys.stderr)
+    write_output(OUT / "site" / "projects.html", html)
 
-    if "star_history" in cfg:
+    if history is not None:
         stars_html = html_env.get_template("stars.html.j2").render(**cfg)
-        out_stars = OUT / "site" / "stars.html"
-        out_stars.write_text(stars_html)
-        print(f"wrote {out_stars} ({len(stars_html)} bytes)", file=sys.stderr)
+        write_output(OUT / "site" / "stars.html", stars_html)
 
     # The rest of the site is maintained in axisrow.github.io, but these
     # profile-wide snapshot stats appear in its hero, metadata and timeline.
     # Keep them generated from the same source of truth as the project cards.
     out_stats = OUT / "site" / "stats.json"
-    out_stats.write_text(json.dumps(cfg["stats"], ensure_ascii=False) + "\n")
-    print(f"wrote {out_stats}", file=sys.stderr)
+    write_output(out_stats, json.dumps(cfg["stats"], ensure_ascii=False) + "\n")
 
     return 0
 
