@@ -22,7 +22,14 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from sync import github
+# This script is invoked directly by the CI workflow (`python3 sync/...`), which
+# puts its own directory on sys.path[0] instead of the repo root. Absolute
+# ``from sync import ...`` needs the repo root on the path, so add it here.
+_ROOT = str(Path(__file__).resolve().parent.parent)
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
+
+from sync import github  # noqa: E402  (path bootstrap must precede this import)
 
 try:
     from jinja2 import Environment, FileSystemLoader
