@@ -3,7 +3,13 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-from sync.apply_site_fragments import apply_site_fragments, replace_marker
+from sync.apply_site_fragments import (
+    PROFILE_VALUE_KEYS,
+    SUMMARY_FORMAT,
+    _summary_regex,
+    apply_site_fragments,
+    replace_marker,
+)
 
 
 class SiteSyncTests(unittest.TestCase):
@@ -57,6 +63,27 @@ class SiteSyncTests(unittest.TestCase):
         stars = (project_root / "sync/templates/stars.html.j2").read_text()
         self.assertIn('<span>01</span> Momentum', stars)
         self.assertIn('<span>02</span> Selected Work', projects)
+
+    def test_summary_format_is_single_source_of_truth(self) -> None:
+        # The rendered summary and its matcher must derive from SUMMARY_FORMAT,
+        # and every counter must be a placeholder so adding a key can't drift them.
+        for key in PROFILE_VALUE_KEYS:
+            self.assertIn("{" + key + "}", SUMMARY_FORMAT)
+        self.assertEqual(
+            _summary_regex(SUMMARY_FORMAT),
+            r"\d+\ merged\ upstream\ PRs\ ·\ \d+\ stars\ ·\ \d+\ starred\ projects\.",
+        )
+
+    def test_stars_chart_geometry_is_not_hardcoded(self) -> None:
+        project_root = Path(__file__).resolve().parents[1]
+        stars = (project_root / "sync/templates/stars.html.j2").read_text()
+        # Geometry must come from chart_data, not duplicated literals.
+        self.assertNotIn("viewBox=\"0 0 960 340\"", stars)
+        self.assertNotIn("x1=\"54\" x2=\"936\"", stars)
+        self.assertNotIn("y=\"322\"", stars)
+        self.assertIn("viewBox=\"0 0 {{ star_history.chart.width }} {{ star_history.chart.height }}\"", stars)
+        self.assertIn("{{ star_history.chart.left }}", stars)
+        self.assertIn("{{ star_history.chart.width - star_history.chart.right }}", stars)
 
 
 if __name__ == "__main__":

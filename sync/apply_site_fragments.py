@@ -12,6 +12,19 @@ import json
 import re
 from pathlib import Path
 
+# Single source of truth for the profile snapshot counters: the order also
+# fixes the rendered summary string, so adding a counter is a one-line change.
+PROFILE_VALUE_KEYS: tuple[str, ...] = ("stars_earned", "merged_upstream_prs", "starred_projects")
+SUMMARY_FORMAT = "{merged_upstream_prs} merged upstream PRs · {stars_earned} stars · {starred_projects} starred projects."
+
+
+def _summary_regex(format_str: str) -> str:
+    """Build a matcher from the format string: placeholders become ``\\d+`` and
+    surrounding literal text is escaped, so the regex can never drift from the
+    rendered summary text."""
+    parts = re.split(r"(\{[^}]+\})", format_str)
+    return "".join(r"\d+" if part.startswith("{") else re.escape(part) for part in parts)
+
 
 def replace_marker(html: str, name: str, fragment: str) -> str:
     marker = re.escape(name.upper())
@@ -28,7 +41,7 @@ def replace_marker(html: str, name: str, fragment: str) -> str:
 
 def update_profile_values(html: str, stats: dict[str, int]) -> str:
     updated = html
-    for key in ("stars_earned", "merged_upstream_prs", "starred_projects"):
+    for key in PROFILE_VALUE_KEYS:
         value = str(int(stats[key]))
         pattern = re.compile(
             rf'(?s)(<span\b[^>]*\bdata-profile-value="{re.escape(key)}"[^>]*>).*?(</span>)'
@@ -42,14 +55,8 @@ def update_profile_values(html: str, stats: dict[str, int]) -> str:
         if count < 1:
             raise ValueError(f"missing data-profile-value for {key}")
 
-    summary_pattern = re.compile(
-        r'\d+ merged upstream PRs · \d+ stars · \d+ starred projects\.'
-    )
-    summary = (
-        f'{int(stats["merged_upstream_prs"])} merged upstream PRs · '
-        f'{int(stats["stars_earned"])} stars · '
-        f'{int(stats["starred_projects"])} starred projects.'
-    )
+    summary = SUMMARY_FORMAT.format(**{k: int(stats[k]) for k in PROFILE_VALUE_KEYS})
+    summary_pattern = re.compile(_summary_regex(SUMMARY_FORMAT))
     updated, count = summary_pattern.subn(summary, updated)
     if count < 1:
         raise ValueError("missing profile summary metadata")

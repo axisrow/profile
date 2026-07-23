@@ -63,6 +63,13 @@ def chart_data(history: dict) -> dict:
         "latest_date": entries[-1]["date"],
         "ticks": [{"value": tick, "y": f"{y(tick):.1f}"} for tick in ticks],
         "months": month_labels,
+        # Geometry — single source of truth shared with stars.html.j2 so the
+        # grid/labels stay aligned when width/height/margins change.
+        "width": width,
+        "height": height,
+        "left": left,
+        "right": right,
+        "bottom": bottom,
     }
 
 
