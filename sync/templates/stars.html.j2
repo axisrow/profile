@@ -7,14 +7,15 @@
           <div class="stars-current"><strong>{{ star_history.chart.latest_total }}★</strong><span>{{ star_history.chart.latest_date }} · original repositories</span></div>
         </div>
         <div class="stars-chart">
-        <svg viewBox="0 0 960 340" role="img" aria-labelledby="stars-chart-title stars-chart-desc">
+        <svg viewBox="0 0 {{ star_history.chart.width }} {{ star_history.chart.height }}" role="img" aria-labelledby="stars-chart-title stars-chart-desc">
           <title id="stars-chart-title">Cumulative GitHub stars since {{ star_history.start_date }}</title>
           <desc id="stars-chart-desc">The chart ends at {{ star_history.chart.latest_total }} stars on {{ star_history.chart.latest_date }}.</desc>
-{% for tick in star_history.chart.ticks %}          <line class="stars-grid" x1="54" x2="936" y1="{{ tick.y }}" y2="{{ tick.y }}" />
+{% for tick in star_history.chart.ticks %}          <line class="stars-grid" x1="{{ star_history.chart.left }}" x2="{{ star_history.chart.width - star_history.chart.right }}" y1="{{ tick.y }}" y2="{{ tick.y }}" />
           <text class="stars-y-label" x="44" y="{{ tick.y }}">{{ tick.value }}</text>
 {% endfor %}          <polyline class="stars-line" points="{{ star_history.chart.points }}" />
           <circle class="stars-end" cx="{{ star_history.chart.end_x }}" cy="{{ star_history.chart.end_y }}" r="5" />
-{% for month in star_history.chart.months %}          <text class="stars-x-label" x="{{ month.x }}" y="322">{{ month.label }}</text>
+{% for month in star_history.chart.months %}          {# x-label baseline sits 24px below the plot's bottom margin so month names clear the axis. #}
+          <text class="stars-x-label" x="{{ month.x }}" y="{{ star_history.chart.height - star_history.chart.bottom + 24 }}">{{ month.label }}</text>
 {% endfor %}        </svg>
         </div>
       </div>
