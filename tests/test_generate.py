@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import json
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest import mock
 
 from jinja2 import Environment
 
-from sync.generate import chart_data, make_env, write_output
+import sync.generate as generate
+from sync.generate import chart_data, load_history, make_env, write_output
 
 
 class MakeEnvTests(unittest.TestCase):
@@ -96,6 +99,70 @@ class ChartDataTests(unittest.TestCase):
         self.assertEqual(chart["latest_date"], "2026-03-02")
         # end_x is the x-projection of the last index: left + plot_width.
         self.assertEqual(chart["end_x"], "936.0")
+
+
+class LoadHistoryTests(unittest.TestCase):
+    """load_history resolves its file as ROOT.parent/data/stars-history.json,
+    where ROOT is the sync/ dir. Mirror that layout under a temp dir so the
+    patched ROOT.parent points exactly at the dir holding data/."""
+
+    def _history(self, entries: list[dict]) -> dict:
+        return {
+            "scope": "test",
+            "start_date": "2026-03-01",
+            "opening_balance": 0,
+            "entries": entries,
+        }
+
+    def _cfg(self) -> dict:
+        return {"stats": {"fork_stars": 5, "stars_earned": 0}}
+
+    def test_returns_none_and_leaves_stats_when_history_missing(self) -> None:
+        with TemporaryDirectory() as tmp:
+            # ROOT = tmp/sync → ROOT.parent = tmp, no data/ there → None.
+            fake_root = Path(tmp) / "sync"
+            fake_root.mkdir()
+            with mock.patch.object(generate, "ROOT", fake_root):
+                cfg = self._cfg()
+                result = load_history(cfg)
+        self.assertIsNone(result)
+        self.assertEqual(cfg["stats"]["stars_earned"], 0)
+
+    def test_recomputes_stars_earned_from_last_entry_plus_fork_stars(self) -> None:
+        entries = [{"date": "2026-03-01", "gained": 0, "total": 99}]
+        history = self._history(entries)
+        with TemporaryDirectory() as tmp:
+            # data/ lives under ROOT.parent (= tmp).
+            data_dir = Path(tmp) / "data"
+            data_dir.mkdir()
+            (data_dir / "stars-history.json").write_text(json.dumps(history))
+            fake_root = Path(tmp) / "sync"
+            fake_root.mkdir()
+            cfg = self._cfg()
+            with mock.patch.object(generate, "ROOT", fake_root):
+                result = load_history(cfg)
+        # 99 (last total) + 5 (fork_stars) = 104.
+        self.assertEqual(cfg["stats"]["stars_earned"], 104)
+        assert result is not None
+        self.assertIn("chart", result)
+        self.assertEqual(result["entries"], entries)
+
+    def test_does_not_mutate_caller_stats_dict(self) -> None:
+        entries = [{"date": "2026-03-01", "gained": 0, "total": 50}]
+        history = self._history(entries)
+        with TemporaryDirectory() as tmp:
+            data_dir = Path(tmp) / "data"
+            data_dir.mkdir()
+            (data_dir / "stars-history.json").write_text(json.dumps(history))
+            fake_root = Path(tmp) / "sync"
+            fake_root.mkdir()
+            cfg = self._cfg()
+            original_stats_id = id(cfg["stats"])
+            with mock.patch.object(generate, "ROOT", fake_root):
+                load_history(cfg)
+        # stats is replaced with a copy, so the caller's original dict is intact
+        # by identity (a defensive copy, matching the pre-refactor behavior).
+        self.assertNotEqual(id(cfg["stats"]), original_stats_id)
 
 
 if __name__ == "__main__":
