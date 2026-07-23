@@ -32,7 +32,8 @@ DEFAULT_HISTORY = ROOT / "data" / "stars-history.json"
 def api_get(path: str, accept: str | None = None) -> list[dict] | dict:
     """Thin wrapper preserving the historical return shape for local callers."""
     data, _ = github.api_get(path, accept)
-    assert data is not None
+    if data is None:
+        raise RuntimeError(f"Empty response from {path}")
     return data
 
 

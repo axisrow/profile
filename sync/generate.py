@@ -79,6 +79,8 @@ def get_stars(handle: str, repos: list[str]) -> dict[str, int]:
 
     Any network or HTTP failure for a single repo degrades to ``0`` with a
     WARNING on stderr, so one unreachable repo never aborts the whole render.
+    Requests use the shared client's default 30s timeout (previously 15s when
+    this owned its own urllib call).
     """
     stars: dict[str, int] = {}
     for name in repos:
