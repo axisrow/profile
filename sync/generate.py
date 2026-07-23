@@ -19,9 +19,10 @@ from __future__ import annotations
 import json
 import os
 import sys
-import urllib.request
 from datetime import date
 from pathlib import Path
+
+from sync import github
 
 try:
     from jinja2 import Environment, FileSystemLoader
@@ -67,22 +68,17 @@ def chart_data(history: dict) -> dict:
 
 
 def get_stars(handle: str, repos: list[str]) -> dict[str, int]:
-    """Return {repo_name: star_count} via the GitHub REST API."""
-    token = os.environ.get("GH_TOKEN", "")
-    headers = {
-        "Accept": "application/vnd.github+json",
-        "User-Agent": "axisrow-profile-sync",
-    }
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
+    """Return {repo_name: star_count} via the GitHub REST API.
+
+    Any network or HTTP failure for a single repo degrades to ``0`` with a
+    WARNING on stderr, so one unreachable repo never aborts the whole render.
+    """
     stars: dict[str, int] = {}
     for name in repos:
-        url = f"https://api.github.com/repos/{handle}/{name}"
-        req = urllib.request.Request(url, headers=headers)
+        path = f"repos/{handle}/{name}"
         try:
-            with urllib.request.urlopen(req, timeout=15) as r:
-                data = json.loads(r.read().decode())
-            stars[name] = int(data.get("stargazers_count", 0))
+            data, _ = github.api_get(path)
+            stars[name] = int(data.get("stargazers_count", 0) if isinstance(data, dict) else 0)
             print(f"  {name}: {stars[name]}★", file=sys.stderr)
         except Exception as e:
             print(f"  WARNING: {name}: could not fetch stars ({e})", file=sys.stderr)
